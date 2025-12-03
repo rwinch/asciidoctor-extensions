@@ -625,7 +625,7 @@ describe('include-code-extension', () => {
     })
 
     it('should warn if at least one include-<lang> attribute is set but no resources are found', () => {
-      const expectedMessage = 'no code includes found for hello'
+      const expectedMessage = 'include-code checked the paths ref: example$java/hello.java,ref: example$kotlin/hello.kt,ref: example$groovy/hello.groovy,ref: example$xml/hello.xml for target hello; No includes found'
       const expectedLineno = 1
       const input = 'include-code::hello[]'
       const actual = run(input)
@@ -633,6 +633,28 @@ describe('include-code-extension', () => {
       expect(messages).to.have.lengthOf(1)
       const message = messages[0]
       expect(message.level).to.equal('warn')
+      expect(message.msg).to.equal(expectedMessage)
+      expect(message).to.have.nested.property('file.line', expectedLineno)
+    })
+
+    it('should log info if at least one include-<lang> attribute is set and resources are found', () => {
+      addExample(
+        'java/hello.java',
+        heredoc`
+        public class Hello {
+          public static void main (String[] args) {
+            System.out.println("Hello, World!");
+          }
+        }
+        `
+      )
+      const expectedMessage = 'include-code checked the paths ref: example$java/hello.java,ref: example$kotlin/hello.kt,ref: example$groovy/hello.groovy,ref: example$xml/hello.xml for target hello'
+      const expectedLineno = 1
+      const input = 'include-code::hello[]'
+      run(input)
+      expect(messages).to.have.lengthOf(1)
+      const message = messages[0]
+      expect(message.level).to.equal('info')
       expect(message.msg).to.equal(expectedMessage)
       expect(message).to.have.nested.property('file.line', expectedLineno)
     })
