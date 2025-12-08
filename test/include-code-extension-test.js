@@ -625,7 +625,7 @@ describe('include-code-extension', () => {
     })
 
     it('should warn if at least one include-<lang> attribute is set but no resources are found', () => {
-      const expectedMessage = 'include-code checked the paths [{ ref: example$java/hello.java, exists: false }, { ref: example$kotlin/hello.kt, exists: false }, { ref: example$groovy/hello.groovy, exists: false }, { ref: example$xml/hello.xml, exists: false }] for target hello; No includes found'
+      const expectedMessage = 'include-code checked the paths [{ ref: example$java/hello.java, exists: false, required: false, lang: java }, { ref: example$kotlin/hello.kt, exists: false, required: false, lang: kotlin }, { ref: example$groovy/hello.groovy, exists: false, required: false, lang: groovy }, { ref: example$xml/hello.xml, exists: false, required: false, lang: xml }] for target hello; No includes found'
       const expectedLineno = 1
       const input = 'include-code::hello[]'
       const actual = run(input)
@@ -648,7 +648,7 @@ describe('include-code-extension', () => {
         }
         `
       )
-      const expectedMessage = 'include-code checked the paths [{ ref: example$java/hello.java, exists: true }, { ref: example$kotlin/hello.kt, exists: false }, { ref: example$groovy/hello.groovy, exists: false }, { ref: example$xml/hello.xml, exists: false }] for target hello'
+      const expectedMessage = 'include-code checked the paths [{ ref: example$java/hello.java, exists: true, required: false, lang: java }, { ref: example$kotlin/hello.kt, exists: false, required: false, lang: kotlin }, { ref: example$groovy/hello.groovy, exists: false, required: false, lang: groovy }, { ref: example$xml/hello.xml, exists: false, required: false, lang: xml }] for target hello'
       const expectedLineno = 1
       const input = 'include-code::hello[]'
       run(input)
@@ -973,6 +973,315 @@ describe('include-code-extension', () => {
       // eslint-disable-next-line no-template-curly-in-string
       expect(message.msg).to.equal('include-code is using a template "example$kotlin/${invalid}${lang_ext}" that after processing resulted with unprocessed variables "example$kotlin/${invalid}.kt"')
       expect(message).to.have.nested.property('file.line', 4)
+    })
+
+    it('warns when missing template for required lang', () => {
+      const expectedSource = heredoc`
+      fun main(args : Array<String>) {
+        println("Hello, World!")
+      }
+      `
+      addExample('kotlin/org/springmvc/index/sampleproject/hello.kt', expectedSource)
+      const input = heredoc`
+      [[sample-project]]
+      = Page Title
+
+      include-code::./hello[]
+      `
+      const actual = run(
+          input,
+          {
+            attributes: {
+              // eslint-disable-next-line no-template-curly-in-string
+              'include-code-kotlin-template': 'example$kotlin/${adoc_path}/${adoc_filename}/${adoc_id}/${adoc_target}${lang_ext}',
+              'include-code-required-langs': 'java,kotlin',
+            },
+          },
+          relativeFile('org/spring-mvc/index.adoc')
+      )
+      const message = messages[0]
+      expect(message.level).to.equal('warn')
+      // eslint-disable-next-line no-template-curly-in-string
+      expect(message.msg).to.equal('include-code is missing the required attributes [include-code-java-template] for the required langs [java,kotlin]')
+      expect(message).to.have.nested.property('file.line', 4)
+    })
+
+    it('warns missing configuration for required lang', () => {
+      const expectedSource = heredoc`
+      fun main(args : Array<String>) {
+        println("Hello, World!")
+      }
+      `
+      addExample('kotlin/org/springmvc/index/sampleproject/hello.kt', expectedSource)
+      const input = heredoc`
+      [[sample-project]]
+      = Page Title
+
+      include-code::./hello[]
+      `
+      const actual = run(
+          input,
+          {
+            attributes: {
+              // eslint-disable-next-line no-template-curly-in-string
+              'include-code-kotlin-template': 'example$kotlin/${adoc_path}/${adoc_filename}/${adoc_id}/${adoc_target}${lang_ext}',
+              'include-code-java-template': 'example$java/${adoc_path}/${adoc_filename}/${adoc_id}/${adoc_target}${lang_ext}',
+              'include-code-required-langs': 'java,kotlin',
+            },
+          },
+          relativeFile('org/spring-mvc/index.adoc')
+      )
+      const message = messages[0]
+      expect(message.level).to.equal('warn')
+      // eslint-disable-next-line no-template-curly-in-string
+      expect(message.msg).to.equal('include-code checked the paths [{ ref: example$java/org/springmvc/index/sampleproject/hello.java, exists: false, required: true, lang: java }, { ref: example$kotlin/org/springmvc/index/sampleproject/hello.kt, exists: true, required: true, lang: kotlin }] for target ./hello; Missing includes for the langs: java')
+      expect(message).to.have.nested.property('file.line', 4)
+    })
+
+    it('no warning when all required langs present', () => {
+      addExample(
+          'kotlin/org/springmvc/index/sampleproject/hello.kt',
+          heredoc`
+        fun main(args : Array<String>) {
+          println("Hello, World!")
+        }
+        `
+      )
+      addExample(
+          'java/org/springmvc/index/sampleproject/hello.java',
+          heredoc`
+        public class Hello {
+          public static void main (String[] args) {
+            System.out.println("Hello, World!");
+          }
+        }
+        `
+      )
+      const input = heredoc`
+      [[sample-project]]
+      = Page Title
+
+      include-code::./hello[]
+      `
+      const actual = run(
+          input,
+          {
+            attributes: {
+              // eslint-disable-next-line no-template-curly-in-string
+              'include-code-kotlin-template': 'example$kotlin/${adoc_path}/${adoc_filename}/${adoc_id}/${adoc_target}${lang_ext}',
+              'include-code-java-template': 'example$java/${adoc_path}/${adoc_filename}/${adoc_id}/${adoc_target}${lang_ext}',
+              'include-code-required-langs': 'java,kotlin',
+            },
+          },
+          relativeFile('org/spring-mvc/index.adoc')
+      )
+      expect(messages.filter((m) => m.level != 'info').length).to.equal(0)
+    })
+
+    it('no warning when all required langs as langs attr present', () => {
+      addExample(
+          'kotlin/org/springmvc/index/sampleproject/hello.kt',
+          heredoc`
+        fun main(args : Array<String>) {
+          println("Hello, World!")
+        }
+        `
+      )
+      addExample(
+          'java/org/springmvc/index/sampleproject/hello.java',
+          heredoc`
+        public class Hello {
+          public static void main (String[] args) {
+            System.out.println("Hello, World!");
+          }
+        }
+        `
+      )
+      const input = heredoc`
+      [[sample-project]]
+      = Page Title
+
+      include-code::./hello[langs="java,kotlin"]
+      `
+      const actual = run(
+          input,
+          {
+            attributes: {
+              // eslint-disable-next-line no-template-curly-in-string
+              'include-code-kotlin-template': 'example$kotlin/${adoc_path}/${adoc_filename}/${adoc_id}/${adoc_target}${lang_ext}',
+              'include-code-java-template': 'example$java/${adoc_path}/${adoc_filename}/${adoc_id}/${adoc_target}${lang_ext}',
+            },
+          },
+          relativeFile('org/spring-mvc/index.adoc')
+      )
+      expect(messages.filter((m) => m.level != 'info').length).to.equal(0)
+    })
+
+    it('include-code allows langs attr and warns missing configuration for required lang', () => {
+      const expectedSource = heredoc`
+      fun main(args : Array<String>) {
+        println("Hello, World!")
+      }
+      `
+      addExample('kotlin/org/springmvc/index/sampleproject/hello.kt', expectedSource)
+      const input = heredoc`
+      [[sample-project]]
+      = Page Title
+
+      include-code::./hello[langs="java,kotlin"]
+      `
+      const actual = run(
+          input,
+          {
+            attributes: {
+              // eslint-disable-next-line no-template-curly-in-string
+              'include-code-kotlin-template': 'example$kotlin/${adoc_path}/${adoc_filename}/${adoc_id}/${adoc_target}${lang_ext}',
+              'include-code-java-template': 'example$java/${adoc_path}/${adoc_filename}/${adoc_id}/${adoc_target}${lang_ext}',
+            },
+          },
+          relativeFile('org/spring-mvc/index.adoc')
+      )
+      const message = messages[0]
+      expect(message.level).to.equal('warn')
+      // eslint-disable-next-line no-template-curly-in-string
+      expect(message.msg).to.equal('include-code checked the paths [{ ref: example$java/org/springmvc/index/sampleproject/hello.java, exists: false, required: true, lang: java }, { ref: example$kotlin/org/springmvc/index/sampleproject/hello.kt, exists: true, required: true, lang: kotlin }] for target ./hello; Missing includes for the langs: java')
+      expect(message).to.have.nested.property('file.line', 4)
+    })
+
+    it('include-code allows langs attr to override and warns missing configuration for required lang', () => {
+      const expectedSource = heredoc`
+      fun main(args : Array<String>) {
+        println("Hello, World!")
+      }
+      `
+      addExample('kotlin/org/springmvc/index/sampleproject/hello.kt', expectedSource)
+      const input = heredoc`
+      [[sample-project]]
+      = Page Title
+
+      include-code::./hello[langs="java,kotlin"]
+      `
+      const actual = run(
+          input,
+          {
+            attributes: {
+              // eslint-disable-next-line no-template-curly-in-string
+              'include-code-kotlin-template': 'example$kotlin/${adoc_path}/${adoc_filename}/${adoc_id}/${adoc_target}${lang_ext}',
+              'include-code-java-template': 'example$java/${adoc_path}/${adoc_filename}/${adoc_id}/${adoc_target}${lang_ext}',
+              'include-code-required-langs': 'kotlin',
+            },
+          },
+          relativeFile('org/spring-mvc/index.adoc')
+      )
+      const message = messages[0]
+      expect(message.level).to.equal('warn')
+      // eslint-disable-next-line no-template-curly-in-string
+      expect(message.msg).to.equal('include-code checked the paths [{ ref: example$java/org/springmvc/index/sampleproject/hello.java, exists: false, required: true, lang: java }, { ref: example$kotlin/org/springmvc/index/sampleproject/hello.kt, exists: true, required: true, lang: kotlin }] for target ./hello; Missing includes for the langs: java')
+      expect(message).to.have.nested.property('file.line', 4)
+    })
+
+    it('include-code langs +java warns missing configuration for required lang', () => {
+      const expectedSource = heredoc`
+      fun main(args : Array<String>) {
+        println("Hello, World!")
+      }
+      `
+      addExample('kotlin/org/springmvc/index/sampleproject/hello.kt', expectedSource)
+      const input = heredoc`
+      [[sample-project]]
+      = Page Title
+
+      include-code::./hello[langs="+java"]
+      `
+      const actual = run(
+          input,
+          {
+            attributes: {
+              // eslint-disable-next-line no-template-curly-in-string
+              'include-code-kotlin-template': 'example$kotlin/${adoc_path}/${adoc_filename}/${adoc_id}/${adoc_target}${lang_ext}',
+              'include-code-java-template': 'example$java/${adoc_path}/${adoc_filename}/${adoc_id}/${adoc_target}${lang_ext}',
+              'include-code-required-langs': 'kotlin',
+            },
+          },
+          relativeFile('org/spring-mvc/index.adoc')
+      )
+      const message = messages[0]
+      expect(message.level).to.equal('warn')
+      // eslint-disable-next-line no-template-curly-in-string
+      expect(message.msg).to.equal('include-code checked the paths [{ ref: example$java/org/springmvc/index/sampleproject/hello.java, exists: false, required: true, lang: java }, { ref: example$kotlin/org/springmvc/index/sampleproject/hello.kt, exists: true, required: true, lang: kotlin }] for target ./hello; Missing includes for the langs: java')
+      expect(message).to.have.nested.property('file.line', 4)
+    })
+
+    it('include-code langs mixing +java and kotlin warns', () => {
+      addExample(
+          'kotlin/org/springmvc/index/sampleproject/hello.kt',
+          heredoc`
+        fun main(args : Array<String>) {
+          println("Hello, World!")
+        }
+        `
+      )
+      addExample(
+          'java/org/springmvc/index/sampleproject/hello.java',
+          heredoc`
+        public class Hello {
+          public static void main (String[] args) {
+            System.out.println("Hello, World!");
+          }
+        }
+        `
+      )
+      const input = heredoc`
+      [[sample-project]]
+      = Page Title
+
+      include-code::./hello[langs="+java,kotlin"]
+      `
+      const actual = run(
+          input,
+          {
+            attributes: {
+              // eslint-disable-next-line no-template-curly-in-string
+              'include-code-kotlin-template': 'example$kotlin/${adoc_path}/${adoc_filename}/${adoc_id}/${adoc_target}${lang_ext}',
+              'include-code-java-template': 'example$java/${adoc_path}/${adoc_filename}/${adoc_id}/${adoc_target}${lang_ext}',
+              'include-code-required-langs': 'kotlin',
+            },
+          },
+          relativeFile('org/spring-mvc/index.adoc')
+      )
+      const message = messages[0]
+      expect(message.level).to.equal('warn')
+      // eslint-disable-next-line no-template-curly-in-string
+      expect(message.msg).to.equal('langs attribute cannot mix and match add/remove with setting of attributes; got langs="+java,kotlin"')
+      expect(message).to.have.nested.property('file.line', 4)
+    })
+
+    it('include-code langs -java prevents warning for missing java', () => {
+      const expectedSource = heredoc`
+      fun main(args : Array<String>) {
+        println("Hello, World!")
+      }
+      `
+      addExample('kotlin/org/springmvc/index/sampleproject/hello.kt', expectedSource)
+      const input = heredoc`
+      [[sample-project]]
+      = Page Title
+
+      include-code::./hello[langs="-java"]
+      `
+      const actual = run(
+          input,
+          {
+            attributes: {
+              // eslint-disable-next-line no-template-curly-in-string
+              'include-code-kotlin-template': 'example$kotlin/${adoc_path}/${adoc_filename}/${adoc_id}/${adoc_target}${lang_ext}',
+              'include-code-java-template': 'example$java/${adoc_path}/${adoc_filename}/${adoc_id}/${adoc_target}${lang_ext}',
+              'include-code-required-langs': 'kotlin,java',
+            },
+          },
+          relativeFile('org/spring-mvc/index.adoc')
+      )
+      expect(messages.filter((m) => m.level == 'warn').length).to.equal(0)
     })
   })
 })
