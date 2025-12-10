@@ -864,6 +864,43 @@ describe('include-code-extension', () => {
       expect(actual.findBy({ context: 'listing' })[0].getSource()).to.equal(expectedSource)
     })
 
+    it('include-code-lang-base works without include-lang', () => {
+      const expectedSource = heredoc`
+      fun main(args : Array<String>) {
+        println("Hello, World!")
+      }
+      `
+      addExample('kotlin/org/springframework/security/kt/docs/reactive/architecture/index/Hello.kt', expectedSource)
+      addExample(
+          'java/org/springframework/security/docs/reactive/architecture/index/Hello.java',
+          heredoc`
+        public class Hello {
+          public static void main (String[] args) {
+            System.out.println("Hello, World!");
+          }
+        }
+        `
+      )
+      const input = heredoc`
+      [[sample-project]]
+      = Page Title
+
+      include-code::./Hello[]
+      `
+      const actual = run(
+          input,
+          {
+            attributes: {
+              // eslint-disable-next-line no-template-curly-in-string
+              'include-code-kotlin-base': 'example$kotlin/org/springframework/security/kt/docs',
+              'include-code-java-base': 'example$java/org/springframework/security/docs',
+            },
+          },
+          relativeFile('reactive/architecture/index.adoc')
+      )
+      expect(actual.findBy({ context: 'listing' })).to.have.lengthOf(2)
+    })
+
     it('include-code-lang-template works without include-lang', () => {
       const expectedSource = heredoc`
       fun main(args : Array<String>) {
