@@ -281,12 +281,13 @@ The attribute value may be one of the following keywords:
 *require name:* @springio/asciidoctor-extensions or @springio/asciidoctor-extensions/include-code-extension
 
 The include code extension provides the `include-code` block macro.
-This macro generates code (i.e., source) blocks by importing any code files found in one or more languages (currently XML, Java, Kotlin, or Groovy) from preconfigured locations.
+This macro generates code (i.e., source) blocks by importing any code files found in one or more languages from preconfigured locations.
 
+[[include-code-usage]]
 The syntax of the `include-code` block macro is `include-code::<target>[<attrlist>]`, where `<target>` is the target path of the code to include and `<attrlist>` is an optional list of name value pairs.
 An example usage of the `include-code` block macro is as follows:
 
-.org/spring/index.adoc
+.modules/ROOT/pages/features/authentication/password-storage.adoc
 [[include-code-example]]
 [,asciidoc]
 ----
@@ -296,7 +297,12 @@ An example usage of the `include-code` block macro is as follows:
 include-code::SomeCode[indent=0]
 ----
 
-The location of the includes are defined by AsciiDoc attributes named `include-code-<language>-template`, where `<language>` is the lowercase name of the language (e.g., `java`).
+=== `include-code-<language>-template`
+// FIXME: introduce template ids. language is the default id. How do the attrs relate to a template id? Cannot use id as that has meaning for anchors
+
+
+The location of the includes are defined by AsciiDoc attributes named `include-code-<language>-template`, where `<language>` is the lowercase name of the language.
+For example, to set the template used for `java`, you can specify the property `include-code-java-template`).
 Potential languages, their corresponding template attribute names, and file extensions are listed in the following table:
 
 .Supported Languages
@@ -323,13 +329,15 @@ Potential languages, their corresponding template attribute names, and file exte
 |===
 
 The template can be defined using constants and template variables in the format of `${variableName}`.
-Consider the following example template definition:
+An example for the `include-java-template` attribute that matches the <<include-code-example,Example>> is as follows:
 
 [[include-code-java-template-example]]
 [,properties]
 ----
-include-code-java-template=example$java/${adoc_filename}/${adoc_target}${lang_ext}
+include-code-java-template=example$docs-src/test/java/org/springframework/security/docs/$\{adoc_filename}/$\{adoc_target}$\{lang_ext}
 ----
+
+NOTE: The syntax of the variables are also valid https://docs.asciidoctor.org/asciidoc/latest/attributes/reference-attributes/[references to document attributes] (e.g. `{variableName}`) and thus https://docs.asciidoctor.org/asciidoc/latest/attributes/reference-attributes/#escape-an-attribute-reference[must be escaped] using `$\\{variableName}` as shown above to avoid asciidoc from reporting errors for https://docs.asciidoctor.org/asciidoc/latest/attributes/unresolved-references/[missing attributes].
 
 The following built in template variables are supported:
 
@@ -338,13 +346,18 @@ The following built in template variables are supported:
 |===
 | Variable Name | Description | Example Value
 
+[[include-code-adoc-path]]
 | `adoc_path`
-| The path of the source AsciiDoc file, with the file name removed and all `-` characters removed (to ensure it is a valid Java identifier).
-| `org/spring`
+| The path of the source AsciiDoc file relative to the module, with the file name removed and all `-` characters removed (to ensure it is a valid Java identifier).
+| `features/authentication`
+
+| `adoc_relativepath`
+| If the <<include-code-usage,`<target>`>> starts with `./`, then the value is the same as <<include-code-adoc-path,`adoc_path`>>, otherwise the value is an empty String.
+| `features/authentication` if target starts with `./`, otherwise ``
 
 | `adoc_filename`
 | The file name of the source AsciiDoc file, without the path or extension and all `-` characters removed (to ensure it is a valid Java identifier).
-| `index`
+| `passwordstorage`
 
 | `adoc_id`
 | The ID of the nearest ancestor section or document or empty string if no id.
@@ -354,21 +367,23 @@ Each '-' character in the ID is removed.
 
 | `adoc_target`
 | The target specified in the `include-code` block macro.
+If <<include-code-usage,`<target>`>> starts with `./`, then `adoc_relativepath` is the same as `adoc_path` and the leading `./` is removed from `adoc_target`.
 | `SomeCode`
 
 | `lang_ext`
 | The file extension for the target language, including the leading `.` character defined in <<include-code-languages,File Extensions>> of the supported languages.
 | `.java`
-
-| `include-<lang>`
-| The asciidoc attribute that defines the base path for the target language, where `<lang>` is the lowercase name of the language.
-For example, the value of the asciidoc attribute named `include-java` defines the base path for Java files.
-| `example$src/main/java/`
 |===
 
-NOTE: The `Example Value` column is computed using the <<include-code-example,Example>> AsciiDoc source and <<include-code-java-template-example,include-code-java-template>>.
+NOTE: The `Example Value` column is computed using the <<include-code-example,Example>> AsciiDoc source.
 
-Consider the following AsciiDoc source:
+After the template is evaluated, any empty path segments (i.e., consecutive `/` characters) are removed.
+Now that we understand template variables, we can evaluate <<include-code-java-template-example,`include-code-java-template`>> evaluates to for the <<include-code-example,Example>> to its value of `+example$docs-src/test/java/org/springframework/security/docs/${adoc_filename}/${adoc_target}${lang_ext}+`
+
+=== `include-code-<language>-template`
+
+=== `include-<language>`
+
 
 
 If the `include-java` attribute is defined, the `include-code` block macro will look for the Java file at the location `\{include-java}/my/exampleproject/SomeCode.java`.
