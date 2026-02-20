@@ -58,7 +58,8 @@ describe('extensions', () => {
         expect(extGroups[extGroupKeys[0]]).to.be.instanceOf(Function)
         const extensions = Asciidoctor.load([]).getExtensions()
         expect(extensions.getTreeProcessors()).to.have.lengthOf(2)
-        expect(extensions.hasBlockMacros()).to.be.false()
+        expect(extensions.getBlockMacros()).to.have.lengthOf(1)
+        expect(extensions.getBlockMacros()[0].instance.name).to.equal('dependency')
       } finally {
         Asciidoctor.Extensions.unregisterAll()
       }
@@ -70,7 +71,12 @@ describe('extensions', () => {
       opts.extension_registry = ext.register(opts.extension_registry || Asciidoctor.Extensions.create(), context)
       const extensions = Asciidoctor.load([], opts).getExtensions()
       expect(extensions.getTreeProcessors()).to.have.lengthOf(2)
-      expect(extensions.getBlockMacros()).to.have.lengthOf(1)
+      expect(extensions.getBlockMacros()).to.have.lengthOf(2)
+      const names = extensions
+        .getBlockMacros()
+        .map((m) => m.instance.name)
+        .sort()
+      expect(names).to.eql(['dependency', 'include-code'])
     })
   })
 

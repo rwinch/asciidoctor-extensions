@@ -345,6 +345,52 @@ include-code::./SomeCode[]
 If the `include-java` attribute is defined, the `include-code` block macro will look for the Java file at the location `\{include-java}/org/spring/my/exampleproject/SomeCode.java`.
 It will then create a source block with the language `java` that contains the contents of this file.
 
+=== Dependency
+
+*require name:* @springio/asciidoctor-extensions or @springio/asciidoctor-extensions/dependency-extension
+
+The dependency extension provides the `dependency` block macro.
+This macro generates a tabbed block containing the same dependency in both Maven (XML) and Gradle (Groovy) formats, so readers can copy the snippet for their build tool.
+
+==== Syntax
+
+----
+dependency::<group>:<artifact>[:<version>][]
+----
+
+The target is a colon-separated coordinate: `group`, `artifact`, and optionally `version`.
+If `version` is omitted (either by using only two segments or by leaving the third segment empty), the generated snippets do not include a version element.
+
+==== Examples
+
+With version:
+
+[,asciidoc]
+----
+dependency::org.springframework:spring-core:7.0.0[]
+----
+
+This produces a tabs block with a Maven snippet (XML) and a Gradle snippet (`implementation 'org.springframework:spring-core:7.0.0'`).
+
+Without version:
+
+[,asciidoc]
+----
+dependency::org.springframework:spring-core:[]
+----
+
+or
+
+[,asciidoc]
+----
+dependency::org.springframework:spring-core[]
+----
+
+This produces a tabs block with a Maven snippet that has no `version` element and a Gradle snippet with coordinates `org.springframework:spring-core`.
+
+If the Asciidoctor Tabs extension is registered, the Maven and Gradle snippets are shown in tabs (Maven as primary, Gradle as secondary).
+If the target has fewer than two colon-separated segments, the extension logs a warning and the macro produces no output.
+
 === Configuration Properties
 
 *require name:* @springio/asciidoctor-extensions/configuration-properties-extension
